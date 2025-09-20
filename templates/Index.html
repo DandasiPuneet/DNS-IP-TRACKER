@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS Lookup & IP Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .lookup-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .input-field {
+            flex: 1;
+            min-width: 300px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .lookup-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            min-width: 120px;
+        }
+
+        .lookup-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .lookup-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .result-card {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .result-card p {
+            font-size: 18px;
+            font-weight: 600;
+            color: #667eea;
+            word-break: break-all;
+        }
+
+        .error-message {
+            background: #ffe6e6;
+            color: #d32f2f;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #d32f2f;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .history-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .history-header h2 {
+            color: #333;
+        }
+
+        .refresh-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #5a67d8;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow-x: auto;
+            display: block;
+            white-space: nowrap;
+        }
+
+        .history-table thead,
+        .history-table tbody,
+        .history-table tr {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .history-table tbody {
+            display: block;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-table th {
+            background: #f8f9ff;
+            font-weight: 600;
+            color: #333;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .history-table td {
+            font-size: 14px;
+        }
+
+        .no-history {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .input-field {
+                min-width: unset;
+            }
+            
+            .lookup-section,
+            .result-section,
+            .history-section {
+                padding: 20px;
+            }
+            
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .history-table {
+                font-size: 12px;
+            }
+            
+            .history-table th,
+            .history-table td {
+                padding: 8px 4px;
+            }
+        }
+
+        .api-info {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .api-info h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+
+        .api-info code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 DNS Lookup & IP Tracker</h1>
+            <p>Discover domain information, IP addresses, and server locations instantly</p>
+        </div>
+
+        <div class="lookup-section">
+            <div class="input-group">
+                <input type="text" id="domainInput" class="input-field" placeholder="Enter domain name (e.g. google.com)" />
+                <button id="lookupBtn" class="lookup-btn">🔍 Lookup</button>
+            </div>
+            
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Looking up domain information...</p>
+            </div>
+            
+            <div id="errorMessage" class="error-message"></div>
+        </div>
+
+        <div id="resultSection" class="result-section">
+            <h2 style="margin-bottom: 20px; color: #333;">📊 Lookup Results</h2>
+            <div id="resultGrid" class="result-grid">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+
+        <div class="history-section">
+            <div class="history-header">
+                <h2>📋 Lookup History</h2>
+                <button id="refreshBtn" class="refresh-btn">🔄 Refresh</button>
+            </div>
+            
+            <div id="historyContainer">
+                <div id="noHistory" class="no-history">
+                    No lookup history available. Perform a domain lookup to see results here.
+                </div>
+                
+                <table id="historyTable" class="history-table" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Domain</th>
+                            <th style="width: 15%;">IP Address</th>
+                            <th style="width: 15%;">Country</th>
+                            <th style="width: 12%;">City</th>
+                            <th style="width: 15%;">ISP</th>
+                            <th style="width: 8%;">TTL</th>
+                            <th style="width: 15%;">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <!-- History entries will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="api-info">
+            <h3>🔌 API Endpoint</h3>
+            <p>Get domain information programmatically:</p>
+            <p><strong>GET</strong> <code>/api/domain/&lt;domain_name&gt;</code></p>
+            <p>Example: <code>curl http://localhost:5000/api/domain/google.com</code></p>
+        </div>
+    </div>
+
+    <script>
+        const domainInput = document.getElementById('domainInput');
+        const lookupBtn = document.getElementById('lookupBtn');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultSection = document.getElementById('resultSection');
+        const resultGrid = document.getElementById('resultGrid');
+        const historyTable = document.getElementById('historyTable');
+        const historyBody = document.getElementById('historyBody');
+        const noHistory = document.getElementById('noHistory');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        // Event listeners
+        lookupBtn.addEventListener('click', performLookup);
+        domainInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performLookup();
+        });
+        refreshBtn.addEventListener('click', loadHistory);
+
+        // Load history on page load
+        loadHistory();
+
+        async function performLookup() {
+            const domain = domainInput.value.trim();
+            
+            if (!domain) {
+                showError('Please enter a domain name');
+                return;
+            }
+
+            showLoading(true);
+            hideError();
+            hideResults();
+
+            try {
+                const response = await fetch('/api/lookup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ domain: domain })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResults(data);
+                    loadHistory(); // Refresh history
+                } else {
+                    showError(data.error || 'Lookup failed');
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showResults(data) {
+            const cards = [
+                { title: 'Domain', value: data.domain, icon: '🌐' },
+                { title: 'IP Address', value: data.ip_address, icon: '🔢' },
+                { title: 'Country', value: data.country, icon: '🌍' },
+                { title: 'City', value: data.city, icon: '🏙️' },
+                { title: 'Region', value: data.region, icon: '📍' },
+                { title: 'ISP', value: data.isp, icon: '🏢' },
+                { title: 'TTL', value: `${data.ttl} seconds`, icon: '⏱️' },
+                { title: 'Lookup Time', value: data.lookup_time, icon: '🕒' }
+            ];
+
+            resultGrid.innerHTML = cards.map(card => `
+                <div class="result-card">
+                    <h3>${card.icon} ${card.title}</h3>
+                    <p>${card.value || 'Unknown'}</p>
+                </div>
+            `).join('');
+
+            resultSection.style.display = 'block';
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history?limit=50');
+                const data = await response.json();
+
+                if (response.ok && data.history && data.history.length > 0) {
+                    showHistory(data.history);
+                } else {
+                    showNoHistory();
+                }
+            } catch (error) {
+                console.error('Failed to load history:', error);
+                showNoHistory();
+            }
+        }
+
+        function showHistory(history) {
+            historyBody.innerHTML = history.map(entry => `
+                <tr>
+                    <td title="${entry.domain}">${entry.domain}</td>
+                    <td title="${entry.ip_address}">${entry.ip_address || 'N/A'}</td>
+                    <td title="${entry.country}">${entry.country || 'N/A'}</td>
+                    <td title="${entry.city}">${entry.city || 'N/A'}</td>
+                    <td title="${entry.isp}">${entry.isp || 'N/A'}</td>
+                    <td>${entry.ttl || 'N/A'}</td>
+                    <td title="${entry.lookup_time}">${formatDateTime(entry.lookup_time)}</td>
+                </tr>
+            `).join('');
+
+            historyTable.style.display = 'table';
+            noHistory.style.display = 'none';
+        }
+
+        function showNoHistory() {
+            historyTable.style.display = 'none';
+            noHistory.style.display = 'block';
+        }
+
+        function formatDateTime(dateTime) {
+            const date = new Date(dateTime);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        function showLoading(show) {
+            loading.style.display = show ? 'block' : 'none';
+            lookupBtn.disabled = show;
+            lookupBtn.textContent = show ? '⏳ Looking up...' : '🔍 Lookup';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        function hideResults() {
+            resultSection.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
